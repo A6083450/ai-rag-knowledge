@@ -15,6 +15,8 @@ spring:
         max-document-batch-size: 10000
     ollama:
       base-url: http://localhost:11434
+      embedding:
+        model: dengcao/Qwen3-Embedding-0.6B:F16
 
   data:
     redis:
