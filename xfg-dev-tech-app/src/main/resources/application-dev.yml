@@ -1,0 +1,22 @@
+server:
+  port: 8090
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/springai
+    username: postgres
+    password: postgres
+  ai:
+    vectorstore:
+      pgvector:
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 1024
+        max-document-batch-size: 10000
+    ollama:
+      base-url: http://localhost:11434
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
