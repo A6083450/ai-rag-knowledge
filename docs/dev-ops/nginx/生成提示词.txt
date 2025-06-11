@@ -1,0 +1,84 @@
+请根据以下信息，编写UI对接服务端接口；
+
+流式GET请求接口，由 SpringBoot Spring AI 框架实现，如下；
+
+/**
+ * curl http://localhost:8090/api/v1/ollama/generate_stream?model=deepseek-r1:1.5b&message=1+1
+ */
+@RequestMapping(value = "generate_stream", method = RequestMethod.GET)
+@Override
+public Flux<ChatResponse> generateStream(@RequestParam String model, @RequestParam String message) {
+    return chatClient.stream(new Prompt(
+            message,
+            OllamaOptions.create()
+                    .withModel(model)
+    ));
+}
+
+流式GET应答数据，对象中的一条对象数据；
+
+{
+    "result": {
+        "output": {
+            "messageType": "ASSISTANT",
+            "metadata": {
+                "messageType": "ASSISTANT"
+            },
+            "toolCalls": [],
+            "media": [],
+            "text": "<think>"
+        },
+        "metadata": {
+            "finishReason": null,
+            "contentFilters": [],
+            "empty": true
+        }
+    },
+    "metadata": {
+        "id": "",
+        "model": "deepseek-r1:1.5b",
+        "rateLimit": {
+            "requestsLimit": 0,
+            "requestsRemaining": 0,
+            "requestsReset": "PT0S",
+            "tokensRemaining": 0,
+            "tokensLimit": 0,
+            "tokensReset": "PT0S"
+        },
+        "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0,
+            "totalTokens": 0
+        },
+        "promptMetadata": [],
+        "empty": false
+    },
+    "results": [
+        {
+            "output": {
+                "messageType": "ASSISTANT",
+                "metadata": {
+                    "messageType": "ASSISTANT"
+                },
+                "toolCalls": [],
+                "media": [],
+                "text": "<think>"
+            },
+            "metadata": {
+                "finishReason": null,
+                "contentFilters": [],
+                "empty": true
+            }
+        }
+    ]
+}
+
+如描述说明，帮我编写一款简单的AI对话页面。
+
+1. 输入内容，点击发送按钮，调用服务端流式请求接口，前端渲染展示。
+2. 以html、js代码方式实现，css样式使用 tailwind 编写。
+3. 通过 const eventSource = new EventSource(apiUrl); 调用api接口。
+4. 从 $.result.output.text 获取，应答的文本展示。注意 content 可能为空。
+5. 从 $.result.metadata.finishReason = "stop" 获取，结束标识。
+6. 注意整体样式的简洁美观。
+注意：请处理 {<think> </think>} 为思考过程可以展开或隐藏，例如返回的消息如下 <think> 思考中，我正在思考</think> 您好！我是由中国的深度求索（DeepSeek）公司开发的智能助手DeepSeek-R1。如您有任何任何问题，我会尽我所能为您提供帮助。

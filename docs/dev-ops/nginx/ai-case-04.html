@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepSeek AI 对话助手</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+			tailwind.config = {
+				theme: {
+					extend: {
+						colors: {
+							primary: '#3b82f6',
+							deepseek: '#0c5bcf',
+						}
+					}
+				}
+			}
+    </script>
+    <style>
+        @keyframes pulse {
+            0% {
+                opacity: 0.5;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0.5;
+            }
+        }
+
+        .thinking-animation {
+            animation: pulse 1.5s infinite;
+        }
+
+        .message-container {
+            max-height: calc(100vh - 160px);
+        }
+
+        .message-bubble {
+            max-width: 85%;
+        }
+
+        .typing-indicator {
+            display: inline-block;
+        }
+
+        .typing-indicator span {
+            height: 8px;
+            width: 8px;
+            display: inline-block;
+            border-radius: 50%;
+            background: #9ca3af;
+            margin: 0 2px;
+            animation: typing 1s infinite;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-5px);
+            }
+            100% {
+                transform: translateY(0);
+            }
+        }
+
+        .think-block {
+            border-left: 3px solid #d1d5db;
+            background-color: #f9fafb;
+        }
+
+        details > summary {
+            cursor: pointer;
+            padding: 8px 12px;
+            background-color: #f3f4f6;
+            border-radius: 4px;
+            margin: 8px 0;
+        }
+
+        details > div {
+            padding: 8px 12px;
+            border-left: 2px solid #e5e7eb;
+            margin: 4px 0 12px 0;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+<div class="flex flex-col min-h-screen max-w-4xl mx-auto">
+    <!-- 标题栏 -->
+    <header class="bg-gradient-to-r from-deepseek to-blue-600 text-white p-4 shadow-md">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-robot text-2xl"></i>
+                <h1 class="text-xl font-bold">DeepSeek AI 对话助手</h1>
+            </div>
+            <div class="text-sm flex items-center space-x-2">
+                <span class="px-2 py-1 bg-blue-700 rounded">模型: deepseek-r1:1.5b</span>
+                <span id="tokenCount" class="px-2 py-1 bg-blue-700 rounded">总Tokens: 0</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 消息区域 -->
+    <div id="chatContainer" class="flex-1 overflow-y-auto p-4 space-y-6 message-container">
+        <div class="flex justify-center">
+            <div class="bg-gray-100 rounded-lg px-4 py-2 text-gray-600 text-sm">
+                <i class="fas fa-info-circle mr-2"></i>输入问题，开始与AI对话
+            </div>
+        </div>
+        <!-- 消息会动态添加到这里 -->
+    </div>
+
+    <!-- 输入区域 -->
+    <div class="p-4 border-t border-gray-200 bg-white">
+        <div class="flex space-x-2">
+            <input
+                    type="text"
+                    id="messageInput"
+                    class="flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="输入您的问题..."
+                    autocomplete="off"
+            >
+            <button
+                    id="sendButton"
+                    class="bg-gradient-to-r from-deepseek to-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center"
+            >
+                <i class="fas fa-paper-plane mr-2"></i>发送
+            </button>
+        </div>
+        <div class="mt-2 text-xs text-gray-500 flex justify-between">
+            <div>按 Enter 发送，Shift + Enter 换行</div>
+            <div>DeepSeek-R1 由深度求索公司开发</div>
+        </div>
+    </div>
+</div>
+
+<script>
+	document.addEventListener('DOMContentLoaded', function () {
+		const chatContainer = document.getElementById('chatContainer')
+		const messageInput = document.getElementById('messageInput')
+		const sendButton = document.getElementById('sendButton')
+		const tokenCount = document.getElementById('tokenCount')
+
+		let eventSource = null
+		let isWaitingForResponse = false
+		let totalTokens = 0
+
+		// 添加消息到聊天容器
+		function addMessage (content, isUser = false) {
+			const messageDiv = document.createElement('div')
+			messageDiv.className = `flex ${isUser ? 'justify-end' : 'justify-start'}`
+
+			const bubble = document.createElement('div')
+			bubble.className = `message-bubble rounded-xl p-4 ${isUser ?
+				'bg-gradient-to-r from-blue-500 to-deepseek text-white rounded-br-none' :
+				'bg-white border border-gray-200 rounded-bl-none shadow-sm'}`
+
+			if (!isUser && content === '') {
+				// AI正在思考的指示器
+				bubble.innerHTML = `
+                        <div class="flex items-center space-x-2">
+                            <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                <i class="fas fa-robot text-deepseek"></i>
+                            </div>
+                            <div class="typing-indicator">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                        </div>
+                    `
+			} else {
+				bubble.innerHTML = content
+			}
+
+			messageDiv.appendChild(bubble)
+			chatContainer.appendChild(messageDiv)
+			chatContainer.scrollTop = chatContainer.scrollHeight
+
+			return bubble
+		}
+
+		// 处理思考块
+		function processThinkBlocks (content) {
+			// 使用正则表达式匹配思考块
+			const thinkPattern = /<think>(.*?)<\/think>/gs
+
+			// 替换思考块为details/summary元素
+			const processedContent = content.replace(thinkPattern, (match, thinkContent) => {
+				return `
+                        <details class="think-block my-2">
+                            <summary class="font-medium text-gray-700">思考过程 <i class="fas fa-chevron-down text-xs ml-1"></i></summary>
+                            <div class="text-gray-600 mt-1 text-sm">${thinkContent}</div>
+                        </details>
+                    `
+			})
+
+			return processedContent
+		}
+
+		// 连接到服务器并处理流式响应
+		function connectToServer (message) {
+			if (isWaitingForResponse) return
+
+			isWaitingForResponse = true
+			const aiMessageElement = addMessage('', false)
+			let aiContent = ''
+
+			// 构建API URL
+			const model = 'deepseek-r1:1.5b'
+			const apiUrl = `http://localhost:8090/api/v1/ollama/generate_stream?model=${encodeURIComponent(model)}&message=${encodeURIComponent(message)}`
+
+			// 创建EventSource连接
+			eventSource = new EventSource(apiUrl)
+
+			eventSource.onmessage = function (event) {
+				const data = JSON.parse(event.data)
+
+				// 检查是否有文本内容
+				if (data.result && data.result.output && data.result.output.text) {
+					const textChunk = data.result.output.text
+					aiContent += textChunk
+
+					// 处理思考块并更新UI
+					aiMessageElement.innerHTML = processThinkBlocks(aiContent)
+				}
+
+				// 更新token计数
+				if (data.metadata && data.metadata.usage) {
+					const usage = data.metadata.usage
+					totalTokens = usage.promptTokens + usage.completionTokens
+					tokenCount.textContent = `总Tokens: ${totalTokens}`
+				}
+
+				// 检查是否结束
+				if (data.result && data.result.metadata && data.result.metadata.finishReason === 'stop') {
+					eventSource.close()
+					isWaitingForResponse = false
+
+					// 最终处理思考块
+					aiMessageElement.innerHTML = processThinkBlocks(aiContent)
+				}
+
+				chatContainer.scrollTop = chatContainer.scrollHeight
+			}
+
+			eventSource.onerror = function () {
+				eventSource.close()
+				isWaitingForResponse = false
+
+				// 显示错误信息
+				aiMessageElement.innerHTML = `<div class="text-red-500"><i class="fas fa-exclamation-circle mr-2"></i>连接出错，请重试</div>`
+			}
+		}
+
+		// 发送消息处理
+		function sendMessage () {
+			const message = messageInput.value.trim()
+			if (!message) return
+
+			// 添加用户消息
+			addMessage(message, true)
+
+			// 清空输入框
+			messageInput.value = ''
+
+			// 连接到服务器
+			connectToServer(message)
+		}
+
+		// 事件监听器
+		sendButton.addEventListener('click', sendMessage)
+
+		messageInput.addEventListener('keydown', function (e) {
+			if (e.key === 'Enter' && !e.shiftKey) {
+				e.preventDefault()
+				sendMessage()
+			}
+		})
+	})
+</script>
+</body>
+</html>
