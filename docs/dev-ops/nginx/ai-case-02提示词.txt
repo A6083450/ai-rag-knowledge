@@ -1,0 +1,36 @@
+@RestController()
+@CrossOrigin("*")
+@RequestMapping("/api/v1/ollama/")
+public class OllamaController implements IAiService {
+
+	@RequestMapping(value = "file/upload", method = RequestMethod.POST, headers = "content-type=multipart/form-data")
+	    @Override
+	    public Response<String> uploadFile(@RequestParam("ragTag") String ragTag,
+	                                       @RequestParam("files") List<MultipartFile> files) {
+	        TokenTextSplitter tokenTextSplitter = TokenTextSplitter.builder().build();
+	        log.info("上传知识库开始 {}", ragTag);
+	        for (MultipartFile file : files) {
+	            TikaDocumentReader documentReader = new TikaDocumentReader(file.getResource());
+	            List<Document> documents = documentReader.get();
+	            List<Document> documentSplitterList = tokenTextSplitter.split(documents);
+            
+	            documents.forEach(doc -> doc.getMetadata().put("knowledge", ragTag));
+	            documentSplitterList.forEach(doc -> doc.getMetadata().put("knowledge", ragTag));
+            
+	            pgVectorStore.add(documentSplitterList);
+	            RList<String> elements = redissonClient.getList("ragTag");
+	            if (!elements.contains(ragTag)){
+	                elements.add(ragTag);
+	            }
+	        }
+        
+	        log.info("上传知识库完成 {}", ragTag);
+	        return Response.<String>builder().code("0000").info("调用成功").build();
+	    }
+
+}
+
+- 请根据服务端接口，编写一款好看的前端上传页面。页面使用 html、js、tailwindcss 编写，不要提供 vue、react 代码。
+- ragTag 为知识库名称
+- files 为知识库文件，支持，md、txt、sql 文件类型上传。
+- 然后用户可以选择文件后点击上传并调用接口

@@ -92,15 +92,20 @@ public class OllamaController implements IAiService {
                 .build();
         
         List<Document> documents = pgVectorStore.similaritySearch(request);
+        documents = Optional.ofNullable(documents)
+                .stream().flatMap(List::stream)
+                .filter(e -> Optional.ofNullable(e)
+                        .map(Document::getScore)
+                        .orElse(0d) >  0.5)
+                .toList();
+        
         String documentsCollectors = Optional.ofNullable(documents)
                 .stream()
                 .flatMap(List::stream)
                 .map(Document::getText)
                 .collect(Collectors.joining());
         
-        /**
-         * 创建 rag 提示
-         */
+        // 创建 rag 提示
         Message ragMessage = SystemPromptTemplate.
                 builder()
                 .template(SYSTEM_PROMPT)

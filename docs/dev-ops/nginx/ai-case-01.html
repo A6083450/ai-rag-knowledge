@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 对话</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+			tailwind.config = {
+				theme: {
+					extend: {
+						colors: {
+							primary: '#3b82f6',
+							secondary: '#64748b',
+						},
+					},
+				},
+			}
+    </script>
+    <style>
+        .think-content {
+            transition: opacity 0.3s ease, max-height 0.3s ease;
+            opacity: 0;
+            max-height: 0;
+            overflow: hidden;
+        }
+
+        .think-content:not(.hidden) {
+            opacity: 1;
+            max-height: 300px; /* 适配内容高度 */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans h-screen flex overflow-hidden">
+<!-- 侧边栏 -->
+<div id="sidebar" class="w-64 bg-white shadow-md flex flex-col">
+    <div class="p-4 border-b">
+        <h1 class="text-xl font-bold text-gray-800">AI 对话</h1>
+    </div>
+    <div class="p-4">
+        <label for="ragTagSelect" class="block text-sm font-medium text-gray-700">知识库</label>
+        <select id="ragTagSelect" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm">
+            <option value="">请选择</option>
+        </select>
+    </div>
+    <div class="p-4 border-t flex justify-between items-center">
+        <span class="text-sm font-medium text-gray-700">聊天列表</span>
+        <button id="newChatBtn" class="text-primary hover:text-blue-700 text-sm font-medium">+ 新建</button>
+    </div>
+    <div id="chatList" class="flex-1 overflow-y-auto">
+        <!-- 聊天列表动态添加 -->
+    </div>
+</div>
+
+<!-- 主内容区域 -->
+<div class="flex-1 flex flex-col">
+    <!-- 聊天头部 -->
+    <div class="bg-white shadow p-4 flex justify-between items-center">
+        <input id="chatTitle" type="text" class="text-lg font-semibold text-gray-800 bg-transparent border-none focus:outline-none" value="新对话" readonly>
+        <div id="chatActions" class="hidden space-x-2">
+            <button id="renameChatBtn" class="text-secondary hover:text-gray-700 text-sm">重命名</button>
+            <button id="deleteChatBtn" class="text-red-500 hover:text-red-700 text-sm">删除</button>
+        </div>
+    </div>
+
+    <!-- 消息区域 -->
+    <div id="messages" class="flex-1 overflow-y-auto p-4 bg-gray-50"></div>
+
+    <!-- 输入区域 -->
+    <div class="bg-white shadow p-4">
+        <div class="flex space-x-2">
+            <textarea id="userInput" rows="2" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary resize-none"
+                      placeholder="输入消息..."></textarea>
+            <button id="sendBtn" class="bg-primary text-white px-4 py-2 rounded-md hover:bg-blue-700">发送</button>
+        </div>
+    </div>
+</div>
+
+<script>
+	let chats = [{ id: 'chat1', title: '新对话', messages: [], ragTag: '' }]
+	let currentChatId = 'chat1'
+	let eventSource = null
+
+	// 加载知识库标签
+	fetch('http://localhost:8090/api/v1/rag/query_rag_tag_list')
+		.then(response => response.json())
+		.then(data => {
+			if (data.code === '0000' && data.data) {
+				const select = document.getElementById('ragTagSelect')
+				data.data.forEach(tag => {
+					const option = document.createElement('option')
+					option.value = tag
+					option.textContent = tag
+					select.appendChild(option)
+				})
+				select.value = chats[0].ragTag
+			}
+		})
+		.catch(error => console.error('加载知识库标签失败:', error))
+
+	// 渲染聊天列表
+	function renderChatList () {
+		const chatList = document.getElementById('chatList')
+		chatList.innerHTML = ''
+		chats.forEach(chat => {
+			const div = document.createElement('div')
+			div.className = `p-2 cursor-pointer rounded-md ${chat.id === currentChatId ? 'bg-primary text-white' : 'hover:bg-gray-100'}`
+			div.innerHTML = `<span class="truncate">${chat.title}</span>`
+			div.onclick = () => switchChat(chat.id)
+			chatList.appendChild(div)
+		})
+	}
+
+	// 切换聊天
+	function switchChat (chatId) {
+		currentChatId = chatId
+		const chat = chats.find(c => c.id === chatId)
+		document.getElementById('chatTitle').value = chat.title
+		document.getElementById('ragTagSelect').value = chat.ragTag
+		document.getElementById('chatActions').classList.toggle('hidden', chats.length === 1 && chatId === 'chat1')
+		renderMessages()
+		renderChatList()
+	}
+
+	// 渲染消息
+	function renderMessages () {
+		const messagesDiv = document.getElementById('messages')
+		messagesDiv.innerHTML = ''
+		const chat = chats.find(c => c.id === currentChatId)
+		chat.messages.forEach(msg => {
+			const div = document.createElement('div')
+			div.className = `mb-4 ${msg.role === 'user' ? 'text-right' : 'text-left'}`
+			let content = msg.content
+			if (msg.role === 'system') {
+				// 处理 <think> 标签
+				content = msg.content.replace(/<think>(.*?)<\/think>/gs, (match, thinkContent) => {
+					const displayContent = thinkContent.trim() || '（无思考内容）'
+					return `<span class="think-toggle cursor-pointer text-secondary hover:underline text-sm">[思考过程]</span><span class="think-content hidden bg-gray-100 p-2 rounded-md block mt-1 text-sm">${displayContent}</span>`
+				})
+			}
+			div.innerHTML = `
+                    <div class="inline-block p-3 rounded-lg ${msg.role === 'user' ? 'bg-primary text-white' : 'bg-white shadow'} max-w-lg">
+                        ${content}
+                    </div>
+                `
+			messagesDiv.appendChild(div)
+			// 为思考切换添加点击事件
+			div.querySelectorAll('.think-toggle').forEach(toggle => {
+				toggle.onclick = () => {
+					const content = toggle.nextElementSibling
+					if (content) {
+						content.classList.toggle('hidden')
+						toggle.textContent = content.classList.contains('hidden') ? '[思考过程]' : '[隐藏思考]'
+					}
+				}
+			})
+			messagesDiv.scrollTop = messagesDiv.scrollHeight
+		})
+	}
+
+	// 新建聊天
+	document.getElementById('newChatBtn').onclick = () => {
+		const newId = `chat${chats.length + 1}`
+		chats.push({ id: newId, title: `新对话${chats.length + 1}`, messages: [], ragTag: '' })
+		switchChat(newId)
+	}
+
+	// 重命名聊天
+	document.getElementById('renameChatBtn').onclick = () => {
+		const chatTitle = document.getElementById('chatTitle')
+		chatTitle.readOnly = false
+		chatTitle.focus()
+		chatTitle.onblur = () => {
+			chatTitle.readOnly = true
+			const chat = chats.find(c => c.id === currentChatId)
+			chat.title = chatTitle.value || '新对话'
+			renderChatList()
+		}
+		chatTitle.onkeypress = e => {
+			if (e.key === 'Enter') {
+				chatTitle.blur()
+			}
+		}
+	}
+
+	// 删除聊天
+	document.getElementById('deleteChatBtn').onclick = () => {
+		if (chats.length > 1) {
+			chats = chats.filter(c => c.id !== currentChatId)
+			switchChat(chats[0].id)
+		}
+	}
+
+	// 发送消息
+	function sendMessage () {
+		const input = document.getElementById('userInput')
+		const message = input.value.trim()
+		const ragTag = document.getElementById('ragTagSelect').value
+		if (!message) return
+
+		const chat = chats.find(c => c.id === currentChatId)
+		chat.ragTag = ragTag
+		chat.messages.push({ role: 'user', content: message })
+		input.value = ''
+		renderMessages()
+
+		const apiUrl = `http://localhost:8090/api/v1/ollama/generate_stream_rag?model=deepseek-r1:1.5b&ragTag=${encodeURIComponent(ragTag)}&message=${encodeURIComponent(message)}`
+		eventSource = new EventSource(apiUrl)
+
+		let assistantMessage = ''
+		chat.messages.push({ role: 'system', content: '' })
+
+		eventSource.onmessage = function (event) {
+			try {
+				const data = JSON.parse(event.data)
+				const text = data.result?.output?.text || ''
+				const finishReason = data.result?.metadata?.finishReason
+
+				if (text) {
+					assistantMessage += text
+					chat.messages[chat.messages.length - 1].content = assistantMessage
+					renderMessages()
+				}
+
+				if (finishReason === 'STOP') {
+					eventSource.close()
+					eventSource = null
+				}
+			} catch (e) {
+				console.error('解析 SSE 数据失败:', e)
+			}
+		}
+
+		eventSource.onerror = function () {
+			console.error('EventSource 连接失败')
+			eventSource.close()
+			eventSource = null
+		}
+	}
+
+	// 发送按钮点击
+	document.getElementById('sendBtn').addEventListener('click', sendMessage)
+
+	// 回车键发送
+	document.getElementById('userInput').addEventListener('keydown', (e) => {
+		if (e.key === 'Enter' && !e.shiftKey) {
+			e.preventDefault()
+			sendMessage()
+		}
+	})
+
+	// 更新知识库标签
+	document.getElementById('ragTagSelect').addEventListener('change', () => {
+		const chat = chats.find(c => c.id === currentChatId)
+		chat.ragTag = document.getElementById('ragTagSelect').value
+	})
+
+	// 初始渲染
+	renderChatList()
+</script>
+</body>
+</html>
