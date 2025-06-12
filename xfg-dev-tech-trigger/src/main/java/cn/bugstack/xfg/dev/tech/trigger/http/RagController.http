@@ -1,0 +1,19 @@
+// @no-log
+GET {{baseUrl}}/api/v1/rag/query_rag_tag_list
+
+
+### 上传文件
+// @no-log
+POST {{baseUrl}}/api/v1/rag/file/upload
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="ragTag"
+
+myTag
+
+--boundary
+Content-Disposition: form-data; name="files"; filename="ragText.txt"
+
+// 上传 ragText.txt 文件
+< ../../docs/ragText.txt

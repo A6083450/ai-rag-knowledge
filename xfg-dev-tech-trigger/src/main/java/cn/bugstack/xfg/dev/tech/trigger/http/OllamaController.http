@@ -1,0 +1,7 @@
+### RAG 检索，检索前先要执行 /api/v1/rag/file/upload
+// @no-log
+GET {{baseUrl}}/api/v1/ollama/generate_stream_rag?model=deepseek-r1:1.5b&ragTag=myTag&message=宏图科技公司地址在哪里？ HTTP/1.1
+Accept: */*
+Host: localhost:8090
+Connection: keep-alive
+Cache-Control: no-cache

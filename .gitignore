@@ -8,6 +8,8 @@ target/
 *.iws
 *.iml
 *.ipr
+.fastRequest
+data
 
 ### Eclipse ###
 .apt_generated
