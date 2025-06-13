@@ -17,6 +17,15 @@ spring:
       base-url: http://localhost:11434
       embedding:
         model: dengcao/Qwen3-Embedding-0.6B:F16
+    openai:
+      base-url: https://dashscope.aliyuncs.com/compatible-mode
+      api-key: xxxxxxxxxx
+      chat:
+        options:
+          model: qwen-plus-latest
+    model:
+      embedding: openai
+      chat: openai
 
   data:
     redis:

@@ -9,8 +9,8 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.redisson.api.RList;
 import org.redisson.api.RedissonClient;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.ai.reader.tika.TikaDocumentReader;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore;
@@ -36,7 +36,7 @@ import java.util.List;
 public class RAGController implements IRAGService {
     
     @Resource
-    private OllamaChatModel ollamaChatModel;
+    private ChatModel chatModel;
     @Resource
     private PgVectorStore pgVectorStore;
     @Resource

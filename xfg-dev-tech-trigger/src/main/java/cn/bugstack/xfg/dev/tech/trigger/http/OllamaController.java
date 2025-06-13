@@ -1,18 +1,18 @@
 package cn.bugstack.xfg.dev.tech.trigger.http;
 
 import cn.bugstack.xfg.dev.tech.api.IAiService;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.SystemPromptTemplate;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.ollama.api.OllamaOptions;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
@@ -33,9 +33,9 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/v1/ollama/")
 public class OllamaController implements IAiService {
     
-    @Autowired
+    @Resource
     private ChatModel chatClient;
-    @Autowired
+    @Resource
     private PgVectorStore pgVectorStore;
     
     /**
@@ -45,7 +45,7 @@ public class OllamaController implements IAiService {
     @RequestMapping(value = "generate", method = RequestMethod.GET)
     @Override
     public ChatResponse generate(@RequestParam("model") String model, @RequestParam("message") String message) {
-        OllamaOptions chatOptions = OllamaOptions.builder()
+        ChatOptions chatOptions = ChatOptions.builder()
                 .model(model)
                 .build();
         Prompt prompt = Prompt.builder()
@@ -61,7 +61,7 @@ public class OllamaController implements IAiService {
     @RequestMapping(value = "generate_stream", method = RequestMethod.GET)
     @Override
     public Flux<ChatResponse> generateStream(@RequestParam("model") String model, @RequestParam("message") String message) {
-        OllamaOptions chatOptions = OllamaOptions.builder()
+        ChatOptions chatOptions = ChatOptions.builder()
                 .model(model)
                 .build();
         Prompt prompt = Prompt.builder()
@@ -99,7 +99,7 @@ public class OllamaController implements IAiService {
                         .orElse(0d) >  0.5)
                 .toList();
         
-        String documentsCollectors = Optional.ofNullable(documents)
+        String documentsCollectors = Optional.of(documents)
                 .stream()
                 .flatMap(List::stream)
                 .map(Document::getText)
@@ -120,12 +120,12 @@ public class OllamaController implements IAiService {
                 .text(message)
                 .build());
         
-        OllamaOptions ollamaOptions = OllamaOptions.builder()
+        ChatOptions chatOptions = ChatOptions.builder()
                 .model(model)
                 .build();
         Prompt prompt = Prompt.builder()
                 .messages(messages)
-                .chatOptions(ollamaOptions)
+                .chatOptions(chatOptions)
                 .build();
         
         return chatClient.stream(prompt);

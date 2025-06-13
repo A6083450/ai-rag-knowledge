@@ -73,11 +73,11 @@
             <artifactId>org.eclipse.jgit</artifactId>
         </dependency>
 
-        <dependency>
+        <!--<dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
-        </dependency>
+        </dependency>-->
 
         <dependency>
             <groupId>cn.bugstack</groupId>
