@@ -12,6 +12,7 @@
         <module>xfg-dev-tech-api</module>
         <module>xfg-dev-tech-app</module>
         <module>xfg-dev-tech-trigger</module>
+        <module>mcp-server-computer</module>
     </modules>
 
     <properties>

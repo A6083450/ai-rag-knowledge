@@ -22,10 +22,18 @@ spring:
       api-key: xxxxxxxxxx
       chat:
         options:
-          model: qwen-plus-latest
+          model: qwen-max
     model:
       embedding: openai
       chat: openai
+
+    mcp:
+      client:
+        stdio:
+          servers-configuration: classpath:config/mcp-servers-config.json
+        request-timeout: 60s
+      server:
+        request-timeout: 60s
 
   data:
     redis:

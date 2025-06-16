@@ -96,7 +96,7 @@ public class OllamaController implements IAiService {
                 .stream().flatMap(List::stream)
                 .filter(e -> Optional.ofNullable(e)
                         .map(Document::getScore)
-                        .orElse(0d) >  0.5)
+                        .orElse(0d) > 0.5)
                 .toList();
         
         String documentsCollectors = Optional.of(documents)

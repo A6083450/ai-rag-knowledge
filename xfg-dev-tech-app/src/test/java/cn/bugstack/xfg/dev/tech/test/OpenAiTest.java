@@ -23,10 +23,12 @@ public class OpenAiTest {
         Prompt prompt = Prompt.builder()
                 .content("你好。你是谁？")
                 .build();
-        chatModel.stream(prompt)
+        
+        System.out.println(chatModel.call(prompt).getResult().getOutput().getText());
+       /* chatModel.stream(prompt)
                 .doOnNext(chatResponse -> {
                     System.out.print(chatResponse.getResult().getOutput().getText());
                 })
-                .blockLast();
+                .blockLast();*/
     }
 }
